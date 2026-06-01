@@ -49,6 +49,10 @@ class BaseInterceptor(object):
             from flowcept.flowceptor.adapters.dask.dask_interceptor import DaskWorkerInterceptor
 
             return DaskWorkerInterceptor()
+        elif kind == "academy_redis_monitor":
+            from flowcept.flowceptor.adapters.academy.academy_interceptor import AcademyRedisMonitorInterceptor
+
+            return AcademyRedisMonitorInterceptor()
         elif kind in "dask":
             # This is dask's client interceptor. We essentially use it to store the dask workflow.
             # That's why we don't need another special interceptor and we can reuse the instrumentation one.
