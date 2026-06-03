@@ -111,10 +111,11 @@ The current code provides:
 - `AcademyRedisMonitorParser`: parser utilities for detecting `RPUSH queue:*`
   events and attempting to deserialize Academy messages.
 
-When the Academy message can be deserialized, the adapter maps message metadata
-into FlowCept task fields. When deserialization fails, it still emits an
-observed task containing raw Redis command metadata so the experiment can
-measure what was observable.
+When the Academy message can be deserialized, the adapter correlates request
+and response messages by their Academy message tag and emits one FlowCept task
+for the whole exchange. When deserialization fails, it still emits an observed
+task containing raw Redis command metadata so the experiment can measure what
+was observable.
 
 ## Data Selection Decisions
 
@@ -126,8 +127,8 @@ bookkeeping. This adapter treats them differently.
 The adapter captures `RPUSH queue:*` commands whose payload is an
 `academy.message.Message`.
 
-These records are the core provenance signal for agentic workflows because they
-contain:
+These messages are the core provenance signal for agentic workflows because
+they contain:
 
 - source and destination entity identifiers;
 - message tag and label for request/response correlation;
@@ -135,6 +136,48 @@ contain:
 - action arguments;
 - action results or errors;
 - Redis queue metadata and timestamps.
+
+The adapter does not emit one FlowCept task per Redis message. Instead, it
+collapses request/response pairs with the same Academy message tag into a
+single `TaskObject` with subtype `academy_exchange_interaction`.
+
+This is the current modeling decision because a Redis message is a transport
+event, while a FlowCept task is a better fit for the semantic interaction: one
+agent asks another entity to perform an action and receives a result or an
+error. Collapsing the pair avoids over-counting transport packets as workflow
+tasks and makes this approach easier to compare with action-level Academy
+instrumentation.
+
+For action calls:
+
+- `activity_id` is the requested Academy action name when the request is
+  available.
+- `source_agent_id` is the requester.
+- `agent_id` is the destination/executor mailbox.
+- `group_id` is the Academy message tag.
+- `used` contains the semantic action inputs (`args` and `kwargs`).
+- `generated` contains the semantic action result, or exception metadata for
+  errors.
+- `custom_metadata.communication.request` stores the raw request message and
+  Redis command metadata.
+- `custom_metadata.communication.response` stores the raw response message and
+  Redis command metadata.
+
+Incomplete or asymmetric exchanges are represented explicitly:
+
+- `pairing_status = "complete"`: request and response were both observed.
+- `pairing_status = "request_without_response"`: the adapter observed a
+  request but did not observe a response before shutdown. The emitted task is
+  left in `SUBMITTED` status.
+- `pairing_status = "response_without_request"`: the adapter observed a
+  response whose request was not seen, usually because the observer started too
+  late or the request was not deserializable. The emitted task uses the response
+  status.
+- `pairing_status = "unpaired_message"`: the payload was an Academy message but
+  did not follow the request/response shape.
+
+This keeps the original message fragments queryable without treating the
+transport fragments themselves as independent domain tasks.
 
 ### Used to enrich captured tasks
 
