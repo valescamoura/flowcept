@@ -7,6 +7,7 @@ from flowcept.agents.flowcept_ctx_manager import mcp_flowcept
 from flowcept.agents.prompts.general_prompts import ROUTING_PROMPT, SMALL_TALK_PROMPT
 
 from flowcept.agents.tools.in_memory_queries.in_memory_queries_tools import run_df_query
+from flowcept.agents.tools.workflow_query_tools import run_workflow_query
 
 
 def _external_llm_enabled() -> bool:
@@ -127,13 +128,13 @@ def reset_context() -> ToolResult:
 
 
 @mcp_flowcept.tool()
-def generate_provenance_card(
+def generate_workflow_card(
     workflow_id: str | None = None,
     campaign_id: str | None = None,
     input_jsonl_path: str | None = None,
 ) -> ToolResult:
     """
-    Generate and return a markdown provenance card as text.
+    Generate and return a markdown workflow card as text.
 
     Exactly one of ``workflow_id``, ``campaign_id``, or ``input_jsonl_path`` must be provided.
 
@@ -157,7 +158,7 @@ def generate_provenance_card(
             return ToolResult(code=400, result="One of workflow_id, campaign_id, or input_jsonl_path is required.")
 
         stats = Flowcept.generate_report(
-            report_type="provenance_card",
+            report_type="workflow_card",
             format="markdown",
             workflow_id=workflow_id,
             campaign_id=campaign_id,
@@ -190,6 +191,20 @@ def prompt_handler(message: str) -> ToolResult:
     TextContent
         The AI response or routing feedback.
     """
+    workflow_query_prefix = "w:"
+    task_query_prefix = "t:"
+    object_query_prefix = "o:"
+    normalized_message = message.strip().lower()
+    if message.strip().lower().startswith(workflow_query_prefix):
+        query = message.split(":", 1)[1].strip()
+        return run_workflow_query(query=query)
+    if normalized_message.startswith(task_query_prefix):
+        query = message.split(":", 1)[1].strip()
+        return run_df_query(query=query, llm=None, plot=False, context_kind="tasks")
+    if normalized_message.startswith(object_query_prefix):
+        query = message.split(":", 1)[1].strip()
+        return run_df_query(query=query, llm=None, plot=False, context_kind="objects")
+
     df_key_words = ["df", "save", "result = df"]
     for key in df_key_words:
         if key in message:
@@ -210,6 +225,7 @@ def prompt_handler(message: str) -> ToolResult:
             result=(
                 "external_llm mode is enabled. Internal LLM routing is disabled. "
                 "Use explicit commands such as 'save', 'result = df ...', "
+                "'t: <task question>', 'o: <object question>', 'w: <workflow question>', "
                 "'reset context', '@record', '@show records', or '@reset records'."
             ),
         )
