@@ -9,6 +9,7 @@ from time import sleep
 from typing import Any
 from uuid import uuid4
 
+from flowcept.commons.flowcept_dataclasses.agent_object import AgentObject
 from flowcept.commons.flowcept_dataclasses.task_object import TaskObject
 from flowcept.commons.utils import get_utc_now
 from flowcept.commons.vocabulary import Status
@@ -54,6 +55,7 @@ class AcademyRedisMonitorInterceptor(BaseInterceptor):
         self._agent_registry: dict[str, dict[str, Any]] = {}
         self._heartbeats: dict[str, float] = {}
         self._pending_requests: dict[str, dict[str, Any]] = {}
+        self._observed_agent_ids: set[str] = set()
 
     def start(self, bundle_exec_id, check_safe_stops: bool = True) -> "AcademyRedisMonitorInterceptor":
         """Start FlowCept buffering and the Redis MONITOR observer thread."""
@@ -172,14 +174,14 @@ class AcademyRedisMonitorInterceptor(BaseInterceptor):
         task_obj = TaskObject()
         task_obj.task_id = f"academy-exchange:{tag}"
         task_obj.utc_timestamp = self._bundle_time(response_bundle) or self._bundle_time(request_bundle) or get_utc_now()
-        task_obj.subtype = "academy_exchange_interaction"
+        task_obj.subtype = self._task_subtype(msg)
         task_obj.workflow_id = Flowcept.current_workflow_id
         task_obj.campaign_id = Flowcept.campaign_id
         task_obj.adapter_id = "academy_redis_monitor"
-        task_obj.tags = ["academy", "redis", "message-stream", "communication"]
+        task_obj.tags = ["academy", "redis", "message-stream", task_obj.subtype]
         task_obj.activity_id = self._activity_id(msg)
-        task_obj.source_agent_id = header["src"]
-        task_obj.agent_id = header["dest"]
+        task_obj.source_agent_id = self._clean_identifier(header["src"])
+        task_obj.agent_id = self._clean_identifier(header["dest"])
         task_obj.group_id = tag
         task_obj.submitted_at = self._bundle_time(request_bundle)
         task_obj.started_at = self._bundle_time(request_bundle)
@@ -313,11 +315,32 @@ class AcademyRedisMonitorInterceptor(BaseInterceptor):
                 "mro": mro,
                 "registered_at": event.redis_time,
             }
+            self._send_agent_object(event.uid)
         elif event.kind == "academy_heartbeat" and event.uid is not None and event.value is not None:
             try:
                 self._heartbeats[event.uid] = float(event.value)
             except ValueError:
                 return
+
+    def _send_agent_object(self, agent_id: str) -> None:
+        if agent_id in self._observed_agent_ids:
+            return
+
+        metadata = self._agent_registry.get(agent_id, {})
+        class_name = metadata.get("class")
+        agent_obj = AgentObject(
+            agent_id=agent_id,
+            name=class_name or agent_id,
+            workflow_id=Flowcept.current_workflow_id,
+            campaign_id=Flowcept.campaign_id,
+        )
+        agent_obj.extra_metadata = {
+            "instrumentation_layer": "message_stream_observability",
+            "source": "academy_redis_monitor",
+            "academy": metadata,
+        }
+        self.send_agent_message(agent_obj)
+        self._observed_agent_ids.add(agent_id)
 
     def _runtime_metadata_for_message(self, header: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -346,6 +369,15 @@ class AcademyRedisMonitorInterceptor(BaseInterceptor):
             return None
         return identifier.split("<", maxsplit=1)[1].split(">", maxsplit=1)[0]
 
+    def _clean_identifier(self, identifier: str | None) -> str | None:
+        uid = self._uid_from_identifier(identifier)
+        if uid is None:
+            return identifier
+        metadata = self._lookup_by_uid_or_prefix(self._agent_registry, uid)
+        if metadata is not None and metadata.get("uid"):
+            return metadata["uid"]
+        return uid
+
     def _lookup_by_uid_or_prefix(self, mapping: dict[str, Any], uid: str) -> Any | None:
         if uid in mapping:
             return mapping[uid]
@@ -361,6 +393,14 @@ class AcademyRedisMonitorInterceptor(BaseInterceptor):
         if body_kind in {"action-response", "error-response"}:
             return "academy.action"
         return f"academy.{body_kind}"
+
+    def _task_subtype(self, msg: dict[str, Any]) -> str:
+        body_kind = msg["body_kind"]
+        if body_kind in {"action-request", "action-response", "error-response"}:
+            return "academy_action"
+        if body_kind in {"ping-request", "ping-response", "shutdown-request", "shutdown-response"}:
+            return "academy_lifecycle"
+        return "academy_lifecycle" if body_kind.endswith(("request", "response")) else "academy_redis_observation"
 
     def _write_raw_event(self, event: AcademyRedisMonitorEvent) -> None:
         if self._raw_event_log_path is None:
