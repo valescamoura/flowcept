@@ -136,9 +136,17 @@ class AcademyRedisMonitorInterceptor(BaseInterceptor):
 
         if body_kind.endswith("response"):
             request_bundle = self._pending_requests.pop(tag, None)
-            return self._prepare_exchange_task(request_bundle, bundle)
+            exchange_task = self._prepare_exchange_task(request_bundle, bundle)
+            communication_task = self._prepare_communication_task(exchange_task, request_bundle, bundle)
+            if communication_task is not None:
+                self.intercept(communication_task.to_dict())
+            return exchange_task
 
-        return self._prepare_exchange_task(bundle, None, pairing_status="unpaired_message")
+        exchange_task = self._prepare_exchange_task(bundle, None, pairing_status="unpaired_message")
+        communication_task = self._prepare_communication_task(exchange_task, bundle, None)
+        if communication_task is not None:
+            self.intercept(communication_task.to_dict())
+        return exchange_task
 
     def _prepare_unparsed_event_task(self, event: AcademyRedisMonitorEvent) -> TaskObject:
         """Represent an observed Redis queue write that was not an Academy message."""
@@ -201,6 +209,74 @@ class AcademyRedisMonitorInterceptor(BaseInterceptor):
             },
         }
         return task_obj
+
+    def _prepare_communication_task(
+        self,
+        exchange_task: TaskObject,
+        request_bundle: dict[str, Any] | None,
+        response_bundle: dict[str, Any] | None,
+    ) -> TaskObject | None:
+        request_msg = request_bundle["message"] if request_bundle is not None else None
+        if request_msg is None or request_msg["body_kind"] != "action-request":
+            return None
+
+        header = request_msg["header"]
+        if not self._is_agent_identifier(header.get("src")) or not self._is_agent_identifier(header.get("dest")):
+            return None
+
+        response_msg = response_bundle["message"] if response_bundle is not None else None
+        communication = TaskObject()
+        communication.task_id = f"academy-communication:{header['tag']}"
+        communication.utc_timestamp = exchange_task.utc_timestamp
+        communication.subtype = "agent_communication"
+        communication.workflow_id = Flowcept.current_workflow_id
+        communication.campaign_id = Flowcept.campaign_id
+        communication.adapter_id = "academy_redis_monitor"
+        communication.tags = ["academy", "redis", "message-stream", "agent_communication"]
+        communication.activity_id = "agent_communication"
+        communication.source_agent_id = exchange_task.source_agent_id
+        communication.agent_id = exchange_task.agent_id
+        communication.group_id = header["tag"]
+        communication.submitted_at = exchange_task.submitted_at
+        communication.started_at = exchange_task.started_at
+        communication.ended_at = exchange_task.ended_at
+        communication.status = exchange_task.status
+        communication.used = {
+            "message_kind": request_msg["body_kind"],
+            "action": request_msg.get("action"),
+            "args": request_msg.get("pargs", []),
+            "kwargs": request_msg.get("kargs", {}),
+        }
+        communication.generated = self._communication_response_summary(response_msg)
+        communication.stderr = exchange_task.stderr
+        communication.custom_metadata = {
+            "semantic_record_type": "agent_communication",
+            "communication_layer": "academy_redis_exchange",
+            "pairing_status": self._pairing_status(request_bundle, response_bundle),
+            "academy_runtime": self._runtime_metadata_for_message(header),
+            "message_tag": header["tag"],
+            "message_label": header.get("label"),
+        }
+        return communication
+
+    def _communication_response_summary(self, response_msg: dict[str, Any] | None) -> dict[str, Any] | None:
+        if response_msg is None:
+            return None
+        if response_msg["body_kind"] == "action-response":
+            return {
+                "message_kind": response_msg["body_kind"],
+                "result": response_msg.get("result"),
+            }
+        if response_msg["body_kind"] == "error-response":
+            return {
+                "message_kind": response_msg["body_kind"],
+                "exception_type": response_msg.get("exception_type"),
+                "exception": response_msg.get("exception"),
+            }
+        return {
+            "message_kind": response_msg["body_kind"],
+            "body": response_msg.get("body", response_msg),
+        }
 
     def _message_bundle(self, event: AcademyRedisMonitorEvent, msg: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -377,6 +453,9 @@ class AcademyRedisMonitorInterceptor(BaseInterceptor):
         if metadata is not None and metadata.get("uid"):
             return metadata["uid"]
         return uid
+
+    def _is_agent_identifier(self, identifier: str | None) -> bool:
+        return bool(identifier and str(identifier).startswith("AgentId<"))
 
     def _lookup_by_uid_or_prefix(self, mapping: dict[str, Any], uid: str) -> Any | None:
         if uid in mapping:
