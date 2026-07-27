@@ -166,6 +166,14 @@ adapters:
     log_metrics: ['accuracy']
     watch_interval_sec: 5
 
+  codex:
+    kind: codex
+    file_path: codex_events.jsonl
+    watch_interval_sec: 1
+    recursive: true
+    include_developer_messages: true
+    include_reasoning: true
+
   dask:
     kind: dask
     worker_should_get_input: true
