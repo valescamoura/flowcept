@@ -173,6 +173,7 @@ adapters:
     recursive: true
     include_developer_messages: true
     include_reasoning: true
+    declared_provenance_enabled: false
 
   dask:
     kind: dask

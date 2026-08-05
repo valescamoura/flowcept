@@ -18,6 +18,7 @@ class CodexSettings(BaseSettings):
     recursive: bool = True
     include_developer_messages: bool = True
     include_reasoning: bool = True
+    declared_provenance_enabled: bool = False
 
     def __post_init__(self):
         """Set runtime observer metadata."""
