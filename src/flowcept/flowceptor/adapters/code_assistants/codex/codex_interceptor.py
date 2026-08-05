@@ -9,7 +9,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from time import sleep
+from time import sleep, time
 from typing import Any
 
 from flowcept.commons.flowcept_dataclasses.agent_object import AgentObject
@@ -553,6 +553,9 @@ class CodexInterceptor(BaseInterceptor):
 
     def intercept(self, obj_msg: JsonObject):
         """Intercept and count emitted Codex provenance records."""
+        obj_msg.setdefault("custom_metadata", {})
+        if isinstance(obj_msg["custom_metadata"], dict):
+            obj_msg["custom_metadata"].setdefault("flowcept_capture_observed_at", time())
         super().intercept(obj_msg)
         self._emitted_records_count += 1
 
