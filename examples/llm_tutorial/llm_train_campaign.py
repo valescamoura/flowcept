@@ -508,7 +508,7 @@ def start_dask(scheduler_file=None, start_dask_cluster=False, with_flowcept=True
             run_command(
                 command=command,
             )
-        sleep(5)
+        sleep(30)
         assert os.path.exists(scheduler_file)
         print(f"{scheduler_file} created!")
 
