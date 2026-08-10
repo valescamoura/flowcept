@@ -66,7 +66,7 @@ def generate_configs(params: dict):
 
 
 def search_workflow(ntokens, dataset_ref, train_data_path, val_data_path, test_data_path, workflow_params, campaign_id=None, scheduler_file=None, start_dask_cluster=False, with_persistence=True, with_flowcept=True, dask_map_gpus=False):
-    client, cluster = start_dask(with_flowcept, scheduler_file, start_dask_cluster)
+    client, cluster = start_dask(with_flowcept, start_dask_cluster, with_flowcept) #scheduler_file
     workflow_params["train_data_path"] = train_data_path
     workflow_params["val_data_path"] = val_data_path
     workflow_params["test_data_path"] = test_data_path
