@@ -120,7 +120,7 @@ def search_workflow(ntokens, dataset_ref, train_data_path, val_data_path, test_d
     return search_wf_id, len(configs)
 
 
-def start_dask_2(
+def start_dask(
     scheduler_file=None,
     start_dask_cluster=False,
     with_flowcept=True,
@@ -464,78 +464,6 @@ def start_dask_2(
 
         print("Registered Flowcept plugin.")
 
-    return client, cluster
-
-
-def start_dask(scheduler_file=None, start_dask_cluster=False, with_flowcept=True, with_slurm=False):
-    from distributed import Client
-    try:
-        # Downgrading eventual dask comm errors in the logs
-        import logging
-        logging.getLogger("distributed.worker").setLevel(logging.WARNING)
-        logging.getLogger("distributed.comm").setLevel(logging.WARNING)
-    except:
-        pass
-
-    if start_dask_cluster:
-        import subprocess
-
-        def run_command(command, out_file="./cmd.out", err_file="./cmd.err", env:dict = None):
-            with open(out_file, "w") as out, open(err_file, "w") as err:
-                process = subprocess.Popen(
-                    ["/bin/bash", "-c", command],
-                    stdout=out,
-                    stderr=err,
-                    env=env
-                )
-
-            return process
-
-        print("Starting Dask Cluster with command line.")
-        scheduler_file = "scheduler_file.json"
-        print("Starting scheduler, then sleeping some...")
-        llm_complex_dir = os.path.abspath(os.path.dirname(__file__))
-        os.environ["PYTHONPATH"] = llm_complex_dir
-        command=f"dask scheduler --host localhost --no-dashboard --no-show --scheduler-file {scheduler_file}"
-        print(command)
-        run_command(command)
-        sleep(5)
-        
-        
-        print("Starting workers, then sleeping some...")
-        for i in range(8):
-            print(f"Starting Worker {i}")
-            command=f"ROCR_VISIBLE_DEVICES={i} && dask worker --nthreads 1 --nworkers 1 --no-dashboard  --scheduler-file {scheduler_file}"
-            print(command)
-            run_command(
-                command=command,
-            )
-
-        
-        sleep(30)
-        assert os.path.exists(scheduler_file)
-        print(f"{scheduler_file} created!")
-
-    if scheduler_file is None:
-        from distributed import LocalCluster
-        cluster = LocalCluster(n_workers=1)
-        scheduler = cluster.scheduler
-        client = Client(scheduler.address)
-        # Registering Flowcept's worker adapters
-        if with_flowcept:
-            from flowcept.flowceptor.adapters.dask.dask_plugins import FlowceptDaskWorkerAdapter
-            client.register_plugin(FlowceptDaskWorkerAdapter())
-    else:
-        print(f"Starting with Scheduler File {scheduler_file}!",flush=True)
-        # If scheduler file is provided, this cluster is not managed in this code.
-        cluster = None
-        client = Client(scheduler_file=scheduler_file)
-        print("Started Client.")
-        if with_flowcept:
-            from flowcept.flowceptor.adapters.dask.dask_plugins import FlowceptDaskWorkerAdapter
-            client.register_plugin(FlowceptDaskWorkerAdapter())
-            print("Registered plugin.")
-        
     return client, cluster
 
 
