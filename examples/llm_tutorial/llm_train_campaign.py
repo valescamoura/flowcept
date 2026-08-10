@@ -116,7 +116,12 @@ def search_workflow(ntokens, dataset_ref, train_data_path, val_data_path, test_d
         file.write(f"{t2 - t1}\n")
 
     print("Done main loop. Closing dask.")
+    sleep(30)
+    print("Closing dask")
     close_dask(client, cluster, f)
+    print("Dask closed")
+    sleep(30)
+    print("Hi!")
     return search_wf_id, len(configs)
 
 
