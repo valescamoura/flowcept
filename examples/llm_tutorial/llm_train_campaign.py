@@ -467,7 +467,7 @@ def start_dask_2(
     return client, cluster
 
 
-def start_dask(scheduler_file=None, start_dask_cluster=False, with_flowcept=True):
+def start_dask(scheduler_file=None, start_dask_cluster=False, with_flowcept=True, with_slurm=False):
     from distributed import Client
     try:
         # Downgrading eventual dask comm errors in the logs
