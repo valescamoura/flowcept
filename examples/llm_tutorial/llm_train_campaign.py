@@ -369,10 +369,12 @@ def start_dask(
 
             scheduler_process = run_command(
                 scheduler_command,
-                # out_file="dask_scheduler.out",
-                # err_file="dask_scheduler.err",
-                # env=env,
+                out_file="dask_scheduler.out",
+                err_file="dask_scheduler.err",
+                env=env,
             )
+
+            sleep(5)
 
             timeout = 60
             start = time.time()
