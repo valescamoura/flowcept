@@ -496,7 +496,9 @@ def start_dask(scheduler_file=None, start_dask_cluster=False, with_flowcept=True
         print("Starting scheduler, then sleeping some...")
         llm_complex_dir = os.path.abspath(os.path.dirname(__file__))
         os.environ["PYTHONPATH"] = llm_complex_dir
-        run_command(f"dask scheduler --host localhost --no-dashboard --no-show --scheduler-file {scheduler_file}")
+        command=f"dask scheduler --host localhost --no-dashboard --no-show --scheduler-file {scheduler_file}"
+        print(command)
+        run_command(command)
         sleep(5)
         
         
@@ -508,6 +510,8 @@ def start_dask(scheduler_file=None, start_dask_cluster=False, with_flowcept=True
             run_command(
                 command=command,
             )
+
+        
         sleep(30)
         assert os.path.exists(scheduler_file)
         print(f"{scheduler_file} created!")
