@@ -326,29 +326,17 @@ def _normalize_declared_event(event: JsonObject) -> JsonObject | None:
         event_class = DPL_CLASS_ALIASES.get(class_key, raw_class)
         event_name = event.get("event")
         if event_class in DPL_MESSAGE_CLASSES:
-            normalized = {
-                key: value
-                for key, value in event.items()
-                if key not in {"layer", "class", "event"}
-            }
+            normalized = {key: value for key, value in event.items() if key not in {"layer", "class", "event"}}
             normalized["type"] = DPL_CLASS_TO_MESSAGE_TYPE[event_class]
             normalized["classification_source"] = "declared"
             return normalized
         if event_class in DPL_ENTITY_CLASSES:
-            normalized = {
-                key: value
-                for key, value in event.items()
-                if key not in {"layer", "class", "event"}
-            }
+            normalized = {key: value for key, value in event.items() if key not in {"layer", "class", "event"}}
             normalized["type"] = DPL_CLASS_TO_ENTITY_TYPE[event_class]
             normalized["classification_source"] = "declared"
             return normalized
         if event_class in DPL_TASK_CLASSES and event_name in {"started", "finished"}:
-            normalized = {
-                key: value
-                for key, value in event.items()
-                if key not in {"layer", "class", "event"}
-            }
+            normalized = {key: value for key, value in event.items() if key not in {"layer", "class", "event"}}
             normalized["type"] = f"{DPL_CLASS_TO_TASK_PREFIX[event_class]}_{event_name}"
             normalized["classification_source"] = "declared"
             return normalized
@@ -1012,11 +1000,7 @@ class CodexInterceptor(BaseInterceptor):
         if started_at is not None and subtype == PROV_AGENT_LOOP.PLAN_STEP_EXECUTION.value:
             started_at -= 0.002
         parent_task_id = self._parent_for_tagged_task(subtype)
-        if (
-            started_at is not None
-            and subtype == PROV_AGENT_LOOP.EVALUATION.value
-            and parent_task_id is not None
-        ):
+        if started_at is not None and subtype == PROV_AGENT_LOOP.EVALUATION.value and parent_task_id is not None:
             parent = self._active_tagged_task(PROV_AGENT_LOOP.LOOP_ITERATION.value)
             if parent and parent.task_id == parent_task_id and parent.started_at is not None:
                 started_at = max(started_at, parent.started_at + 0.001)
@@ -1326,9 +1310,7 @@ class CodexInterceptor(BaseInterceptor):
             )
         )
 
-    def _normalize_llm_usage(
-        self, usage: JsonObject, invocation: ModelInvocationState, info: JsonObject
-    ) -> JsonObject:
+    def _normalize_llm_usage(self, usage: JsonObject, invocation: ModelInvocationState, info: JsonObject) -> JsonObject:
         return _compact_dict(
             {
                 "model": invocation.ai_model.get("model"),
@@ -1374,10 +1356,7 @@ class CodexInterceptor(BaseInterceptor):
         task.submitted_at = turn.submitted_at
         task.started_at = turn.metadata.get("declared_loop_started_at") or turn.started_at
         child_ended_at = [
-            ended_at
-            for invocation in turn.invocations
-            for ended_at in [invocation.ended_at]
-            if ended_at is not None
+            ended_at for invocation in turn.invocations for ended_at in [invocation.ended_at] if ended_at is not None
         ]
         task.ended_at = turn.metadata.get("declared_loop_finished_at") or max(
             [ended_at for ended_at in [turn.ended_at, *child_ended_at] if ended_at is not None],
@@ -1793,11 +1772,7 @@ class CodexInterceptor(BaseInterceptor):
         if loop and loop.workflow_id == workflow_id:
             return loop.task_id
         turn = self._current_turn()
-        if (
-            turn
-            and workflow_id
-            and turn.metadata.get("last_loop_iteration_workflow_id") == workflow_id
-        ):
+        if turn and workflow_id and turn.metadata.get("last_loop_iteration_workflow_id") == workflow_id:
             last_loop_id = turn.metadata.get("last_loop_iteration_id")
             if last_loop_id:
                 return last_loop_id
@@ -2180,14 +2155,18 @@ class CodexInterceptor(BaseInterceptor):
             return []
         content = event.get("summary") or event.get("result") or event.get("content")
         message_type = "message"
-        return [
-            _entity(
-                message_type,
-                content=content,
-                attributed_to=invocation.agent_id,
-                status=event.get("status"),
-            )
-        ] if content else []
+        return (
+            [
+                _entity(
+                    message_type,
+                    content=content,
+                    attributed_to=invocation.agent_id,
+                    status=event.get("status"),
+                )
+            ]
+            if content
+            else []
+        )
 
     def _tagged_task_generated_entities(
         self,
@@ -2197,16 +2176,20 @@ class CodexInterceptor(BaseInterceptor):
     ) -> list[JsonObject]:
         content = event.get("result") or event.get("summary") or event.get("content")
         if subtype == PROV_AGENT_LOOP.EVALUATION.value:
-            return [
-                _entity(
-                    "evaluation_result",
-                    content=content,
-                    status=event.get("status"),
-                    decision=event.get("decision"),
-                    reason=event.get("reason"),
-                    attributed_to=invocation.agent_id,
-                )
-            ] if content or event.get("status") else []
+            return (
+                [
+                    _entity(
+                        "evaluation_result",
+                        content=content,
+                        status=event.get("status"),
+                        decision=event.get("decision"),
+                        reason=event.get("reason"),
+                        attributed_to=invocation.agent_id,
+                    )
+                ]
+                if content or event.get("status")
+                else []
+            )
         return []
 
     def _criteria_entities_from_event(
@@ -2366,11 +2349,7 @@ class CodexInterceptor(BaseInterceptor):
         if not task.parent_task_id:
             return
         parent = next(
-            (
-                state
-                for state in self._active_tagged_tasks.values()
-                if state.task_id == task.parent_task_id
-            ),
+            (state for state in self._active_tagged_tasks.values() if state.task_id == task.parent_task_id),
             None,
         )
         if parent is None or parent.started_at is None:
