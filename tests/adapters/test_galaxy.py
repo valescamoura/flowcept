@@ -189,6 +189,12 @@ class TestGalaxyInterceptor(unittest.TestCase):
         self._run_cycle(self._interceptor(FakeGalaxy()))
         assert len([r for r in self._records() if r["type"] == "task"]) == 2
 
+    def test_failed_job_with_paused_downstream_finishes_invocation(self):
+        self._run_cycle(self._interceptor(FakeGalaxy(job_states={"j1": "error", "j2": "paused"})))
+        tasks = {r["task_id"]: r for r in self._records() if r["type"] == "task"}
+        assert tasks[f"galaxy:{HOST}:job:j1"]["status"] == "ERROR"
+        assert tasks[f"galaxy:{HOST}:job:j2"]["status"] == "UNKNOWN"
+
     def test_intercepted_invocation_is_not_repeated(self):
         self._run_cycle(self._interceptor(FakeGalaxy()))
         self._run_cycle(self._interceptor(FakeGalaxy()))

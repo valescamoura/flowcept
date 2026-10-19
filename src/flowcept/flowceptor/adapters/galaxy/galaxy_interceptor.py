@@ -20,7 +20,9 @@ ContextResolver = Callable[[Dict, Dict], Dict]
 context for the records, e.g. ``{"campaign_id": ..., "parent_workflow_id": ...}``."""
 
 FINISHED_INVOCATION_STATES = {"failed", "cancelled"}
-TERMINAL_JOB_STATES = {"ok", "error", "failed", "deleted", "skipped"}
+# "paused": Galaxy pauses the jobs downstream of a failed job; they only run
+# again if a user resumes them, so the invocation is treated as finished.
+TERMINAL_JOB_STATES = {"ok", "error", "failed", "deleted", "skipped", "paused"}
 JOB_STATUS = {"ok": Status.FINISHED, "error": Status.ERROR, "failed": Status.ERROR}
 
 
