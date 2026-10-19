@@ -16,6 +16,7 @@ class Vocabulary:
         MLFLOW_KIND = "mlflow"
         TENSORBOARD_KIND = "tensorboard"
         DASK_KIND = "dask"
+        GALAXY_KIND = "galaxy"
 
 
 class Status(str, Enum):

@@ -9,6 +9,7 @@ Runtime interception layer. This package observes work, captures telemetry, publ
 - `adapters/dask/`: Dask worker plugin and task-state interception.
 - `adapters/mlflow/`: MLflow DB/file watcher and run extraction.
 - `adapters/tensorboard/`: TensorBoard event watcher.
+- `adapters/galaxy/`: Galaxy API poller; finished workflow invocations become workflows and their jobs become tasks.
 - `adapters/brokers/`: broker message interception, currently MQTT.
 - `consumers/base_consumer.py`: common MQ consumer loop.
 - `consumers/document_inserter.py`: consumes task/workflow/object messages and persists metadata to the document DB.

@@ -43,6 +43,11 @@ class BaseInterceptor(object):
 
             return TensorboardInterceptor()
 
+        elif kind == "galaxy":
+            from flowcept.flowceptor.adapters.galaxy.galaxy_interceptor import GalaxyInterceptor
+
+            return GalaxyInterceptor()
+
         elif kind == "broker_mqtt":
             from flowcept.flowceptor.adapters.brokers.mqtt_interceptor import MQTTBrokerInterceptor
 

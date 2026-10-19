@@ -16,12 +16,16 @@ from flowcept.flowceptor.adapters.tensorboard.tensorboard_dataclasses import (
 from flowcept.flowceptor.adapters.dask.dask_dataclasses import (
     DaskSettings,
 )
+from flowcept.flowceptor.adapters.galaxy.galaxy_dataclasses import (
+    GalaxySettings,
+)
 
 
 SETTINGS_CLASSES = {
     Vocabulary.Settings.MLFLOW_KIND: MLFlowSettings,
     Vocabulary.Settings.TENSORBOARD_KIND: TensorboardSettings,
     Vocabulary.Settings.DASK_KIND: DaskSettings,
+    Vocabulary.Settings.GALAXY_KIND: GalaxySettings,
 }
 
 

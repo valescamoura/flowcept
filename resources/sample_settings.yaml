@@ -166,6 +166,15 @@ adapters:
     log_metrics: ['accuracy']
     watch_interval_sec: 5
 
+  galaxy:
+    kind: galaxy
+    url: http://localhost:8080
+    api_key: ${oc.env:GALAXY_API_KEY,null}
+    verify: true
+    watch_interval_sec: 30
+    invocations_limit: 100
+    state_path: galaxy_interceptor_state.json
+
   dask:
     kind: dask
     worker_should_get_input: true
