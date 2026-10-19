@@ -10,8 +10,8 @@ Galaxy API (via `bioblend`, `pip install flowcept[galaxy]`).
   parameters and input datasets in `used`, output datasets in `generated`,
   Galaxy job metrics in `custom_metadata.metrics`, and `dependencies` pointing
   to the jobs that produced its inputs.
-- An invocation is finished when it is `failed`/`cancelled`, or `scheduled`
-  with all its jobs in a terminal state (`ok`, `error`, `failed`, `deleted`,
+- An invocation is finished when it is `failed`/`cancelled`, or `scheduled`/
+  `completed` (depending on the Galaxy release) with all its jobs in a terminal state (`ok`, `error`, `failed`, `deleted`,
   `skipped` or `paused`; Galaxy pauses the jobs downstream of a failed job).
   Unfinished invocations are retried on the next poll. A paused job resumed
   later by a user is not captured again.

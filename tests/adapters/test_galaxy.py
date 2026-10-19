@@ -195,6 +195,10 @@ class TestGalaxyInterceptor(unittest.TestCase):
         assert tasks[f"galaxy:{HOST}:job:j1"]["status"] == "ERROR"
         assert tasks[f"galaxy:{HOST}:job:j2"]["status"] == "UNKNOWN"
 
+    def test_completed_invocation_is_intercepted(self):
+        self._run_cycle(self._interceptor(FakeGalaxy(invocation_state="completed")))
+        assert len([r for r in self._records() if r["type"] == "task"]) == 2
+
     def test_intercepted_invocation_is_not_repeated(self):
         self._run_cycle(self._interceptor(FakeGalaxy()))
         self._run_cycle(self._interceptor(FakeGalaxy()))

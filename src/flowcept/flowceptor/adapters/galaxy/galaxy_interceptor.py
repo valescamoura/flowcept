@@ -20,6 +20,9 @@ ContextResolver = Callable[[Dict, Dict], Dict]
 context for the records, e.g. ``{"campaign_id": ..., "parent_workflow_id": ...}``."""
 
 FINISHED_INVOCATION_STATES = {"failed", "cancelled"}
+# Scheduling is done; the invocation is finished once all its jobs are.
+# Older Galaxy releases keep "scheduled", newer ones move to "completed".
+SCHEDULED_INVOCATION_STATES = {"scheduled", "completed"}
 # "paused": Galaxy pauses the jobs downstream of a failed job; they only run
 # again if a user resumes them, so the invocation is treated as finished.
 TERMINAL_JOB_STATES = {"ok", "error", "failed", "deleted", "skipped", "paused"}
@@ -136,7 +139,7 @@ class GalaxyInterceptor(BaseInterceptor):
     def _is_finished(invocation: Dict, jobs: List[Dict]) -> bool:
         if invocation["state"] in FINISHED_INVOCATION_STATES:
             return True
-        if invocation["state"] != "scheduled":
+        if invocation["state"] not in SCHEDULED_INVOCATION_STATES:
             return False
         return all(job["state"] in TERMINAL_JOB_STATES for job in jobs)
 
