@@ -2,6 +2,7 @@
 
 import copy
 import os
+import platform
 import socket
 import getpass
 import json
@@ -238,8 +239,9 @@ if LOGIN_NAME is None:
         except Exception:
             LOGIN_NAME = None
 
-SYS_NAME = SYS_NAME if SYS_NAME is not None else os.uname()[0]
-NODE_NAME = NODE_NAME if NODE_NAME is not None else os.uname()[1]
+# platform.uname() is cross-platform; os.uname() does not exist on Windows.
+SYS_NAME = SYS_NAME if SYS_NAME is not None else platform.uname().system
+NODE_NAME = NODE_NAME if NODE_NAME is not None else platform.uname().node
 
 try:
     HOSTNAME = socket.getfqdn()
