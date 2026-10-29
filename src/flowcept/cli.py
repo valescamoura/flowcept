@@ -549,6 +549,21 @@ def query(filter: str, project: str = None, sort: str = None, limit: int = 0):
     )
 
 
+def load_buffer_file(file_path: str):
+    """
+    Load a Flowcept JSONL buffer file into the enabled document database.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the JSONL buffer file.
+    """
+    from flowcept import Flowcept
+
+    count = Flowcept.load_buffer_file(file_path)
+    print(f"Loaded {count} messages from {file_path}.")
+
+
 def get_task(task_id: str):
     """
     Query the Document DB to retrieve a task.
@@ -1211,7 +1226,7 @@ def generate_report(
 COMMAND_GROUPS = [
     ("Basic Commands", [version, check_services, show_settings, init_settings, start, start_services, stop_services]),
     ("Consumption Commands", [start_consumption_services, stop_consumption_services, stream_messages]),
-    ("Database Commands", [workflow_count, query, get_task]),
+    ("Database Commands", [workflow_count, query, get_task, load_buffer_file]),
     ("Report Commands", [generate_report]),
     ("Agent Commands", [agent_client]),
     ("External Services", [start_mongo, start_redis, stop_redis]),

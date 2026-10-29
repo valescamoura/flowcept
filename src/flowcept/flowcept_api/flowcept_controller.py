@@ -28,6 +28,7 @@ from flowcept.configs import (
     MONGO_ENABLED,
     SETTINGS_PATH,
     LMDB_ENABLED,
+    SQLITE_ENABLED,
     KVDB_ENABLED,
     MQ_ENABLED,
     DUMP_BUFFER_PATH,
@@ -437,6 +438,48 @@ class Flowcept(object):
                 return pd.read_json(file_path, lines=True)
 
         return buffer
+
+    @staticmethod
+    def load_buffer_file(file_path: str | None = None) -> int:
+        """
+        Load a JSONL buffer file into the enabled document database(s).
+
+        Reads the file with :meth:`read_buffer_file` and persists the messages with
+        :meth:`load_messages`. Loading the same file again updates the stored documents.
+
+        Parameters
+        ----------
+        file_path : str, optional
+            Path to the buffer file. Defaults to ``DUMP_BUFFER_PATH`` from the configuration.
+
+        Returns
+        -------
+        int
+            Number of messages loaded.
+        """
+        return Flowcept.load_messages(Flowcept.read_buffer_file(file_path))
+
+    @staticmethod
+    def load_messages(messages: List[Dict[str, Any]]) -> int:
+        """
+        Persist captured messages (tasks, workflows, agents) into the enabled document database(s).
+
+        Messages are handled exactly as the ``DocumentInserter`` handles messages consumed from
+        the MQ, without requiring the MQ. Useful to move offline captures into a database.
+
+        Parameters
+        ----------
+        messages : list of dict
+            Flowcept messages, e.g., the lines of an offline JSONL buffer.
+
+        Returns
+        -------
+        int
+            Number of messages loaded.
+        """
+        from flowcept.flowceptor.consumers.document_inserter import DocumentInserter
+
+        return DocumentInserter.load_messages(messages)
 
     def save_agent(
         self,
@@ -1014,7 +1057,7 @@ class Flowcept(object):
             if not up:
                 logger.error("KVDB is enabled but not ready!")
 
-        if MONGO_ENABLED or LMDB_ENABLED:
+        if MONGO_ENABLED or LMDB_ENABLED or SQLITE_ENABLED:
             from flowcept.flowcept_api.db_api import DBAPI
 
             for backend, up in DBAPI.db_liveness_tests().items():

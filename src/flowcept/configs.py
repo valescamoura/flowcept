@@ -25,7 +25,7 @@ DEFAULT_SETTINGS = {
     "sys_metadata": {},
     "extra_metadata": {},
     "db_buffer": {},
-    "databases": {"mongodb": {"enabled": False}, "lmdb": {"enabled": False}},
+    "databases": {"mongodb": {"enabled": False}, "lmdb": {"enabled": False}, "sqlite": {"enabled": False}},
     "adapters": {},
     "agent": {},
 }
@@ -160,7 +160,19 @@ if LMDB_SETTINGS:
     _lmdb_path_default = LMDB_SETTINGS.get("path", "flowcept_lmdb")
     LMDB_SETTINGS["path"] = _get_env("LMDB_PATH", _lmdb_path_default)
 
-DBS_ENABLED = MONGO_ENABLED or LMDB_ENABLED
+######################
+#  SQLite Settings   #
+######################
+# SQLite is currently a local query/loading backend: data gets into it through
+# Flowcept.load_buffer_file / Flowcept.load_messages, never through the MQ consumer.
+SQLITE_SETTINGS = DATABASES.get("sqlite", {})
+SQLITE_ENABLED = False
+if SQLITE_SETTINGS:
+    SQLITE_ENABLED = _get_env_bool("SQLITE_ENABLED", SQLITE_SETTINGS.get("enabled", False))
+    _sqlite_path_default = SQLITE_SETTINGS.get("path", "flowcept.sqlite")
+    SQLITE_SETTINGS["path"] = _get_env("SQLITE_PATH", _sqlite_path_default)
+
+DBS_ENABLED = MONGO_ENABLED or LMDB_ENABLED or SQLITE_ENABLED
 
 # if not LMDB_ENABLED and not MONGO_ENABLED:
 #     # At least one of these variables need to be enabled.
@@ -323,6 +335,15 @@ def validate_config():
             "Quick fix with profiles:\n"
             "  flowcept --config-profile full-online -y\n"
             "  flowcept --config-profile full-offline -y"
+        )
+    if DB_FLUSH_MODE == "online" and SQLITE_ENABLED:
+        # TODO: support SQLite as online persistence (MQ consumer writing to SQLite). It needs
+        #  a concurrency strategy for the file (single writer or locking) before it can be enabled.
+        raise ValueError(
+            "Invalid configuration: databases.sqlite.enabled=true with project.db_flush_mode='online'.\n"
+            "SQLite is currently supported only as a local query/loading backend "
+            "(see Flowcept.load_buffer_file); online persistence to SQLite is not supported yet.\n"
+            "Disable databases.sqlite or use db_flush_mode: offline."
         )
     if DB_FLUSH_MODE == "offline" and (MONGO_ENABLED or LMDB_ENABLED or KVDB_ENABLED):
         raise ValueError(

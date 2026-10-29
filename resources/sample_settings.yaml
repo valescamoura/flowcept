@@ -117,6 +117,10 @@ databases:
     enabled: false
     path: flowcept_lmdb
 
+  sqlite: # Local query/loading backend. Fill it with `flowcept --load-buffer-file`; not supported with db_flush_mode: online.
+    enabled: false
+    path: flowcept.sqlite
+
   mongodb:
     enabled: false
     host: localhost

@@ -45,6 +45,11 @@ def create_app() -> FastAPI:
     async def value_error_handler(_: Request, exc: ValueError) -> JSONResponse:
         return JSONResponse(status_code=400, content={"detail": str(exc)})
 
+    @app.exception_handler(NotImplementedError)
+    async def not_implemented_handler(_: Request, exc: NotImplementedError) -> JSONResponse:
+        # Operations the configured DB backend does not support (e.g., objects on SQLite).
+        return JSONResponse(status_code=501, content={"detail": str(exc) or "Not supported by the DB backend."})
+
     if WEBSERVER_CORS_ORIGINS:
         from fastapi.middleware.cors import CORSMiddleware
 

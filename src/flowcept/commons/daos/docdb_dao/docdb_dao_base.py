@@ -11,7 +11,7 @@ import pandas as pd
 
 from flowcept.commons.flowcept_dataclasses.workflow_object import WorkflowObject
 from flowcept.commons.flowcept_dataclasses.agent_object import AgentObject
-from flowcept.configs import MONGO_ENABLED, LMDB_ENABLED
+from flowcept.configs import MONGO_ENABLED, LMDB_ENABLED, SQLITE_ENABLED
 
 
 class DocumentDBDAO(ABC):
@@ -28,7 +28,7 @@ class DocumentDBDAO(ABC):
         """Build a `DocumentDBDAO` instance for querying.
 
         Depending on the configuration, this method creates an instance of
-        either MongoDBDAO or LMDBDAO.
+        MongoDBDAO, LMDBDAO or SQLiteDAO.
 
         Parameters
         ----------
@@ -45,7 +45,7 @@ class DocumentDBDAO(ABC):
         Raises
         ------
         NotImplementedError
-            If neither MongoDB nor LMDB is enabled.
+            If neither MongoDB, LMDB nor SQLite is enabled.
         """
         if DocumentDBDAO._instance is not None:
             if hasattr(DocumentDBDAO._instance, "_initialized"):
@@ -67,6 +67,10 @@ class DocumentDBDAO(ABC):
             from flowcept.commons.daos.docdb_dao.lmdb_dao import LMDBDAO
 
             DocumentDBDAO._instance = LMDBDAO()
+        elif SQLITE_ENABLED:
+            from flowcept.commons.daos.docdb_dao.sqlite_dao import SQLiteDAO
+
+            DocumentDBDAO._instance = SQLiteDAO()
         else:
             raise Exception("All dbs are disabled. You can't use this.")
         # TODO: revise, this below may be better in subclasses

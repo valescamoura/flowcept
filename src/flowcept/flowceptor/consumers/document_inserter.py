@@ -2,7 +2,7 @@
 
 from threading import Thread
 from time import time, sleep
-from typing import Dict, Callable, Tuple
+from typing import Dict, Callable, List, Tuple
 from uuid import uuid4
 
 from flowcept.commons.task_data_preprocess import summarize_telemetry, tag_critical_task
@@ -26,6 +26,7 @@ from flowcept.configs import (
     ENRICH_MESSAGES,
     MONGO_ENABLED,
     LMDB_ENABLED,
+    SQLITE_ENABLED,
 )
 from flowcept.flowceptor.consumers.consumer_utils import (
     remove_empty_fields_from_dict,
@@ -63,6 +64,7 @@ class DocumentInserter(BaseConsumer):
         self,
         check_safe_stops=True,
         bundle_exec_id=None,
+        allow_mq_disabled=False,
     ):
         self._doc_daos = []
         self.logger = FlowceptLogger()
@@ -74,12 +76,16 @@ class DocumentInserter(BaseConsumer):
             from flowcept.commons.daos.docdb_dao.lmdb_dao import LMDBDAO
 
             self._doc_daos.append(LMDBDAO())
+        if SQLITE_ENABLED:
+            from flowcept.commons.daos.docdb_dao.sqlite_dao import SQLiteDAO
+
+            self._doc_daos.append(SQLiteDAO())
         self._should_start = True
         if not len(self._doc_daos):
             self._should_start = False
             return
 
-        super().__init__()
+        super().__init__(allow_mq_disabled=allow_mq_disabled)
         self._previous_time = time()
         self._main_thread: Thread = None
         self._curr_db_buffer_size = DB_BUFFER_SIZE
@@ -259,6 +265,11 @@ class DocumentInserter(BaseConsumer):
         if not self._should_start:
             self.logger.info("Doc Inserter cannot start as all DocDBs are disabled.")
             return self
+        if SQLITE_ENABLED:
+            # TODO: support consuming from the MQ into SQLite (needs a concurrency strategy for the file).
+            raise NotImplementedError(
+                "SQLite cannot be fed by the MQ consumer yet; load offline buffers with Flowcept.load_buffer_file."
+            )
         super().start(target=self.thread_target, threaded=threaded, daemon=daemon)
         return self
 
@@ -317,6 +328,33 @@ class DocumentInserter(BaseConsumer):
         else:
             self.logger.error("Unexpected message type")
             return True
+
+    @staticmethod
+    def load_messages(messages: List[Dict]) -> int:
+        """Persist already captured messages (e.g., an offline JSONL buffer) into the enabled DocDBs.
+
+        Messages go through the same handling as the ones consumed from the MQ, without
+        subscribing to it. Loading the same messages again updates the stored documents.
+
+        Parameters
+        ----------
+        messages : list of dict
+            Flowcept messages (tasks, workflows, agents).
+
+        Returns
+        -------
+        int
+            Number of messages handled.
+        """
+        inserter = DocumentInserter(check_safe_stops=False, allow_mq_disabled=True)
+        if not inserter._should_start:
+            raise Exception("All DocDBs are disabled; enable one in the settings to load messages.")
+        for message in messages:
+            inserter.message_handler(message)
+        inserter.buffer.stop()
+        for dao in inserter._doc_daos:
+            dao.close()
+        return len(messages)
 
     def stop(self, bundle_exec_id=None):
         """

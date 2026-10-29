@@ -5,7 +5,7 @@ Shared runtime building blocks used across Flowcept. Keep this package generic; 
 ## Key Files
 
 - `flowcept_dataclasses/`: message objects for tasks, workflows, blobs, telemetry, and adapter settings.
-- `daos/docdb_dao/`: document database implementations for MongoDB and LMDB.
+- `daos/docdb_dao/`: document database implementations for MongoDB, LMDB and SQLite (`in_process_aggregations.py` holds the summaries/charts shared by LMDB and SQLite).
 - `daos/mq_dao/`: message queue implementations for Redis, Kafka, and Mofka.
 - `daos/keyvalue_dao.py`: Redis-backed key/value coordination used for safe stops and runtime bookkeeping.
 - `autoflush_buffer.py`: size/time-based buffering before MQ flush.

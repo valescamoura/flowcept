@@ -70,9 +70,9 @@ class DBAPI(object):
         Returns
         -------
         dict
-            Keys are backend names (``"mongo"``, ``"lmdb"``); values are bool.
+            Keys are backend names (``"mongo"``, ``"lmdb"``, ``"sqlite"``); values are bool.
         """
-        from flowcept.configs import LMDB_ENABLED, MONGO_ENABLED
+        from flowcept.configs import LMDB_ENABLED, MONGO_ENABLED, SQLITE_ENABLED
 
         results = {}
         if MONGO_ENABLED:
@@ -83,6 +83,10 @@ class DBAPI(object):
             from flowcept.commons.daos.docdb_dao.lmdb_dao import LMDBDAO
 
             results["lmdb"] = LMDBDAO.get_instance().liveness_test()
+        if SQLITE_ENABLED:
+            from flowcept.commons.daos.docdb_dao.sqlite_dao import SQLiteDAO
+
+            results["sqlite"] = SQLiteDAO().liveness_test()
         return results
 
     def insert_or_update_task(self, task: TaskObject):
