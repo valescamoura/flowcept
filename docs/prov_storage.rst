@@ -13,6 +13,13 @@ For optional persistence, you can choose between:
   A robust, service-based database with advanced query support.  
   Required to use Flowcept's Query API (``flowcept.Flowcept.db``) for complex queries and features like ML model management or runtime queries (query while writing).  
 
+- `SQLite <https://www.sqlite.org/>`_  
+  A single local file, no external services, queried with the same Query API (``Flowcept.db``) and
+  the webservice. It is currently a **local query/loading backend**: it is filled from offline JSONL
+  buffers with ``Flowcept.load_buffer_file`` (or ``flowcept --load-buffer-file``), not by the MQ
+  consumer, and it cannot be enabled with ``db_flush_mode: online``. Objects/blobs, recursive task
+  queries, deletes and aggregation pipelines are not supported yet.
+
 Flowcept supports writing to both databases simultaneously (default), individually, or to neither, depending on configuration.
 See `setup instructions <setup.html#setup>`_.
 
@@ -22,7 +29,7 @@ In this case, querying requires writing a custom consumer to subscribe and store
 .. note::
 
    For querying, the Flowcept Database API uses **only one database at a time**.  
-   If both MongoDB and LMDB are enabled, Flowcept defaults to MongoDB.  
+   If both MongoDB and LMDB are enabled, Flowcept defaults to MongoDB (then LMDB, then SQLite).  
    If neither is enabled, an error occurs.  
    Data stored in MongoDB and LMDB are interchangeable and can be transferred between them.
 

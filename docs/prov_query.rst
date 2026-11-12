@@ -5,7 +5,7 @@ Flowcept captures detailed provenance about workflows, tasks, agents, and data a
 
 .. note::
 
-    Persistence is optional in Flowcept. You can configure Flowcept to use LMDB, MongoDB or both. For more complex queries, we recommend using it with Mongo. The in-memory buffer data is also available with a list of raw JSON data, which can also be queried. See also: `provenance storage <prov_storage.html>`_.
+    Persistence is optional in Flowcept. You can configure Flowcept to use LMDB, MongoDB or both, or load offline buffers into SQLite. For more complex queries, we recommend using it with Mongo. The in-memory buffer data is also available with a list of raw JSON data, which can also be queried. See also: `provenance storage <prov_storage.html>`_.
 
 
 Querying with the Command‑Line Interface
@@ -235,6 +235,33 @@ If LMDB is enabled instead of MongoDB Flowcept stores data in a directory (defau
     print(df.head())
 
 Alternatively, you can use the `lmdb` Python library to iterate over raw key–value pairs. The LMDB environment is located under the directory configured in your settings file (commonly named ``flowcept_lmdb``). Because LMDB stores binary values, you’ll need to serialise and deserialise JSON messages yourself.
+
+Working with SQLite
+-------------------
+
+SQLite turns offline JSONL buffers into a single queryable file, without external services.
+Enable it in the settings used by the process that loads and queries the data (keep
+``db_flush_mode: offline``; capture processes do not need it):
+
+.. code-block:: yaml
+
+    databases:
+      sqlite:
+        enabled: true
+        path: flowcept.sqlite
+
+Load buffers (loading the same messages again updates the stored documents) and query them
+with the regular Query API, Mongo-style filters included:
+
+.. code-block:: python
+
+    from flowcept import Flowcept
+
+    Flowcept.load_buffer_file("flowcept_buffer.jsonl")  # or Flowcept.load_messages(list_of_dicts)
+    failed = Flowcept.db.task_query(filter={"status": "ERROR", "used.input": {"$exists": True}})
+
+The same load is available as ``flowcept --load-buffer-file --file-path=flowcept_buffer.jsonl``.
+Messages go through the same handling as the ones the ``DocumentInserter`` consumes from the MQ.
 
 Monitoring Provenance with Grafana
 ----------------------------------
